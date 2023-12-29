@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 A pure implementation of the Monte Carlo Tree Search (MCTS)
-
-@author: Junxiao Song
 """
 
 import numpy as np
@@ -11,18 +9,24 @@ from operator import itemgetter
 
 
 def rollout_policy_fn(board):
-    """a coarse, fast version of policy_fn used in the rollout phase."""
+    """模拟神经网络随机生成各个节点的胜率P"""
     # rollout randomly
     action_probs = np.random.rand(len(board.availables))
     return zip(board.availables, action_probs)
 
 
 def policy_value_fn(board):
-    """a function that takes in a state and outputs a list of (action, probability)
-    tuples and a score for the state"""
+    """返回每个节点的胜率P的值一致"""
     # return uniform probabilities and 0 score for pure MCTS
-    action_probs = np.ones(len(board.availables))/len(board.availables)
+    action_probs = np.ones(len(board.availables)) / len(board.availables)
     return zip(board.availables, action_probs), 0
+
+
+def policy_value_neighbor_fn(board):
+    """只在邻域上存在先验概率的函数"""
+    # return uniform probabilities and 0 score for pure MCTS
+    action_probs = np.ones(len(board.neighbor)) / len(board.neighbor)
+    return zip(board.neighbor, action_probs), 0
 
 
 class TreeNode(object):
@@ -37,6 +41,7 @@ class TreeNode(object):
         self._Q = 0
         self._u = 0
         self._P = prior_p
+        # self.flag = flag # 代表是否为对应选手所下的最后一步棋
 
     def expand(self, action_priors):
         """Expand tree by creating new children.
@@ -63,14 +68,19 @@ class TreeNode(object):
         # Count visit.
         self._n_visits += 1
         # Update Q, a running average of values for all visits.
-        self._Q += 1.0*(leaf_value - self._Q) / self._n_visits
+        self._Q += 1.0 * (leaf_value - self._Q) / self._n_visits
 
-    def update_recursive(self, leaf_value):
+    def update_recursive(self, leaf_value, flag):
         """Like a call to update(), but applied recursively for all ancestors.
+        flag = 1时self.parent需要变号，否则不需要变号
+        为什么需要变号？ 节点自己的value是给上一层用的，上一层可能是对手，对手会最小化自己的胜率。每两层节点才变一次号
         """
         # If it is not root, this node's parent should be updated first.
         if self._parent:
-            self._parent.update_recursive(-leaf_value)
+            if flag:
+                self._parent.update_recursive(-leaf_value, 1 - flag)
+            else:
+                self._parent.update_recursive(leaf_value, 1 - flag)
         self.update(leaf_value)
 
     def get_value(self, c_puct):
@@ -94,7 +104,7 @@ class TreeNode(object):
 
 
 class MCTS(object):
-    """A simple implementation of Monte Carlo Tree Search."""
+    """简单的实现 Monte Carlo Tree Search."""
 
     def __init__(self, policy_value_fn, c_puct=5, n_playout=10000):
         """
@@ -132,7 +142,10 @@ class MCTS(object):
         # Evaluate the leaf node by random rollout
         leaf_value = self._evaluate_rollout(state)
         # Update value and visit count of nodes in this traversal.
-        node.update_recursive(-leaf_value)
+        if state.chesses == 2:
+            node.update_recursive(-leaf_value, 0)
+        else:
+            node.update_recursive(leaf_value, 1)
 
     def _evaluate_rollout(self, state, limit=1000):
         """Use the rollout policy to play until the end of the game,
@@ -184,8 +197,10 @@ class MCTS(object):
 
 class MCTSPlayer(object):
     """AI player based on MCTS"""
+
     def __init__(self, c_puct=5, n_playout=2000):
-        self.mcts = MCTS(policy_value_fn, c_puct, n_playout)
+        self.player = None
+        self.mcts = MCTS(policy_value_neighbor_fn, c_puct, n_playout)
 
     def set_player_ind(self, p):
         self.player = p
@@ -203,4 +218,38 @@ class MCTSPlayer(object):
             print("WARNING: the board is full")
 
     def __str__(self):
-        return "MCTS {}".format(self.player)
+        return "Pure MCTS {}".format(self.player)
+
+
+class MCTSEngine(object):
+    """
+    AI player based on MCTS for SAU
+    """
+
+    def __init__(self, c_puct=5, n_playout=2000, name="MCTS Engine"):
+        self.player = None
+        self.name = name
+        self.mcts = MCTS(policy_value_neighbor_fn, c_puct, n_playout)
+        self.first_turn = False  # 首回合落子在天元
+
+    def set_player_ind(self, p):
+        self.player = p
+        if self.player == 1:
+            self.first_turn = True
+
+    def reset_player(self):
+        self.mcts.update_with_move(-1)
+
+    def get_action(self, board):
+        if self.first_turn:
+            self.first_turn = False
+            return 180  # 9 + 19 * 9
+        if len(board.availables) > 0:
+            move = self.mcts.get_move(board)
+            self.mcts.update_with_move(-1)
+            return move
+        else:
+            print("WARNING: the board is full")
+
+    def __str__(self):
+        return "Engine Pure MCTS {}".format(self.player)

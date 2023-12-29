@@ -64,7 +64,7 @@ def get_im2col_indices(x_shape, field_height,
 
     k = np.repeat(np.arange(C), field_height * field_width).reshape(-1, 1)
 
-    return (k.astype(int), i.astype(int), j.astype(int))
+    return k.astype(int), i.astype(int), j.astype(int)
 
 
 def im2col_indices(x, field_height, field_width, padding=1, stride=1):
