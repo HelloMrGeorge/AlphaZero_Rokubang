@@ -29,7 +29,7 @@ def policy_value_neighbor_fn(board):
     return zip(board.neighbor, action_probs), 0
 
 
-class TreeNode(object):
+class TreeNode:
     """A node in the MCTS tree. Each node keeps track of its own value Q,
     prior probability P, and its visit-count-adjusted prior score u.
     """
@@ -41,7 +41,6 @@ class TreeNode(object):
         self._Q = 0
         self._u = 0
         self._P = prior_p
-        # self.flag = flag # 代表是否为对应选手所下的最后一步棋
 
     def expand(self, action_priors):
         """Expand tree by creating new children.
@@ -103,7 +102,7 @@ class TreeNode(object):
         return self._parent is None
 
 
-class MCTS(object):
+class MCTS:
     """简单的实现 Monte Carlo Tree Search."""
 
     def __init__(self, policy_value_fn, c_puct=5, n_playout=10000):
@@ -195,7 +194,7 @@ class MCTS(object):
         return "MCTS"
 
 
-class MCTSPlayer(object):
+class MCTSPlayer:
     """AI player based on MCTS"""
 
     def __init__(self, c_puct=5, n_playout=2000):
@@ -221,12 +220,12 @@ class MCTSPlayer(object):
         return "Pure MCTS {}".format(self.player)
 
 
-class MCTSEngine(object):
+class MCTSEngine:
     """
     AI player based on MCTS for SAU
     """
 
-    def __init__(self, c_puct=5, n_playout=2000, name="MCTS Engine"):
+    def __init__(self, c_puct=5, n_playout=2000, name="MCTSEngine"):
         self.player = None
         self.name = name
         self.mcts = MCTS(policy_value_neighbor_fn, c_puct, n_playout)

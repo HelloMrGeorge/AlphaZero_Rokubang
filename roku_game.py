@@ -173,7 +173,8 @@ class Game(object):
     def __init__(self, board):
         self.board = board
 
-    def graphic(self, board, player1, player2):
+    @staticmethod
+    def graphic(board, player1, player2):
         """Draw the board and show game info"""
         width = board.width
         height = board.height

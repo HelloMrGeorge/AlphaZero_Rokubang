@@ -2,6 +2,9 @@ from loguru import logger
 
 from roku_game import Board, Game
 from roku_mcts import MCTSEngine
+from roku_RL import RLEngine
+
+from policy_value_net_pytorch import PolicyValueNet  # Pytorch
 
 CHAR_MAP = {
     'A': '00', 'B': '01', 'C': '02', 'D': '03', 'E': '04',
@@ -34,17 +37,17 @@ class ServerPlayer:
         try:
             move = board.location_to_move(self.locations[0:2])
             self.locations = self.locations[2:]
-        except Exception as e:
+        except Exception:
             move = -1
-        if move == -1 or move not in board.availables:
-            # print("invalid move")
-            # move = self.get_action(board)
-            raise Exception(str(self.locations[0:2]) + "invalid move")
+            if move == -1 or move not in board.availables:
+                raise Exception("invalid move")
+            else:
+                raise Exception("unknown exception")
         return move
 
     def parse_move(self, moves: str):
         self.locations = moves.translate(CHAR_MAP)
-        self.locations = [int(self.locations[i:i+2]) for i in range(0, 8, 2)]
+        self.locations = [int(self.locations[i:i + 2]) for i in range(0, 8, 2)]
 
     def __str__(self):
         return "Human {}".format(self.player)
@@ -140,7 +143,10 @@ if __name__ == '__main__':
 
     logger.remove(handler_id=None)
     log_file = logger.add('test.log', level='INFO')
-    engine = MCTSEngine(c_puct=5, n_playout=400, name="Engine2")
+    # engine = MCTSEngine(c_puct=5, n_playout=400, name="Engine2")
+    model_file = './engine.model'
+    best_policy = PolicyValueNet(19, 19, model_file=model_file)
+    engine = RLEngine(best_policy, c_puct=5, n_playout=400, name="Engine3")
     local_server = LocalServer(engine)
     # 主程序循环读取指令并处理
     while True:

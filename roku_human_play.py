@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 
 from roku_game import Board, Game
-from roku_mcts import MCTSPlayer
+# from roku_mcts import MCTSPlayer
+from roku_RL import RLEngine as MCTSPlayer
 
 # import pickle
 # from mcts_alphaZero import MCTSPlayer
 # from policy_value_net_numpy import PolicyValueNetNumpy
 # from policy_value_net import PolicyValueNet  # Theano and Lasagne
-# from policy_value_net_pytorch import PolicyValueNet  # Pytorch
+from policy_value_net_pytorch import PolicyValueNet  # Pytorch
+
+
 # from policy_value_net_tensorflow import PolicyValueNet # Tensorflow
 # from policy_value_net_keras import PolicyValueNet  # Keras
 
@@ -43,7 +46,7 @@ class Human(object):
 def run():
     n = 6
     width, height = 19, 19
-    model_file = 'best_policy_8_8_5.model'
+    model_file = './model/rokubang_19_19_400.model'
     try:
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
@@ -51,8 +54,8 @@ def run():
         # ############### human VS AI ###################
         # load the trained policy_value_net in either Theano/Lasagne, PyTorch or TensorFlow
 
-        # best_policy = PolicyValueNet(width, height, model_file = model_file)
-        # mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
+        best_policy = PolicyValueNet(width, height, model_file=model_file)
+        mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=100)
 
         # load the provided model (trained in Theano/Lasagne) into a MCTS player written in pure numpy
         # try:
@@ -66,7 +69,7 @@ def run():
         #                          n_playout=400)  # set larger n_playout for better performance
 
         # uncomment the following line to play with pure MCTS (it's much weaker even with a larger n_playout)
-        mcts_player = MCTSPlayer(c_puct=5, n_playout=30)
+        # mcts_player = MCTSPlayer(c_puct=5, n_playout=30)
 
         # human player, input your move in the format: 2,3
         human = Human()
