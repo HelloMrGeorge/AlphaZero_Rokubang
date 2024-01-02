@@ -84,10 +84,10 @@ def im2col_indices(x, field_height, field_width, padding=1, stride=1):
 
 class PolicyValueNetNumpy():
     """policy-value network in numpy """
-    def __init__(self, board_width, board_height, net_params):
+    def __init__(self, board_width, board_height, numpy_params_file):
         self.board_width = board_width
         self.board_height = board_height
-        self.params = net_params
+        self.params = np.load(numpy_params_file, allow_pickle=True)
 
     def policy_value_fn(self, board):
         """

@@ -3,7 +3,7 @@ import numpy as np
 import copy
 
 
-class Board(object):
+class Board:
     """board for the game"""
 
     def __init__(self, **kwargs):
@@ -13,10 +13,7 @@ class Board(object):
         self.neighbor: set = set()  # 保存邻近格点，包括棋子周围的8格
         self.width = int(kwargs.get('width', 8))
         self.height = int(kwargs.get('height', 8))
-        self.hw = self.height * self.width  # 棋盘格点数
-        # 字典的方式存储state,
-        # key: move
-        # value: player
+        # 字典的方式存储state, key: move, value: player
         self.states = {}
         # 一行几个子赢棋
         self.n_in_row = int(kwargs.get('n_in_row', 6))
@@ -24,6 +21,7 @@ class Board(object):
         self.chesses = 1  # 初始只能下一个棋
         self.last_moves = []  # 上回合下的所有棋
         self.curr_moves = []  # 这回合下的所有棋
+        self.square = np.zeros((self.height, self.width))  # 新增一个表格形式的棋盘状态，0表示无棋子，1表示玩家1的棋子，2表示玩家2的棋子
 
     def init_board(self, start_player=0):
         if self.width < self.n_in_row or self.height < self.n_in_row:
@@ -34,6 +32,7 @@ class Board(object):
         self.availables = list(range(self.width * self.height))
         self.states = {}
         self.last_move = -1
+        self.square = np.zeros((self.height, self.width))
 
     def move_to_location(self, move):
         """
@@ -80,6 +79,8 @@ class Board(object):
     def do_move(self, move):
         """下一个棋子"""
         self.states[move] = self.current_player
+        h, w = self.move_to_location(move)
+        self.square[h, w] = self.current_player
         self.availables.remove(move)
         self._update_neighbor(move)
         self.last_move = move
@@ -100,48 +101,87 @@ class Board(object):
         self.last_moves = copy.deepcopy(self.curr_moves)
         self.curr_moves.clear()
 
-    def has_a_winner(self):
-        """判断当前是否有赢家了"""
-        width = self.width
-        height = self.height
-        states = self.states
-        n = self.n_in_row
-
-        moved = list(set(range(width * height)) - set(self.availables))
-        if len(moved) < self.n_in_row + 2:
-            return False, -1
-
-        for m in moved:
-            h = m // width
-            w = m % width
-            player = states[m]
-
-            if (w in range(width - n + 1) and
-                    len(set(states.get(i, -1) for i in range(m, m + n))) == 1):  # 如果自[h,w]起，横排n个元素的颜色只有一种
-                return True, player  # 则游戏结束，返回赢家
-
-            if (h in range(height - n + 1) and
-                    len(set(states.get(i, -1) for i in range(m, m + n * width, width))) == 1):
-                return True, player
-
-            if (w in range(width - n + 1) and h in range(height - n + 1) and
-                    len(set(states.get(i, -1) for i in range(m, m + n * (width + 1), width + 1))) == 1):
-                return True, player
-
-            if (w in range(n - 1, width) and h in range(height - n + 1) and
-                    len(set(states.get(i, -1) for i in range(m, m + n * (width - 1), width - 1))) == 1):
-                return True, player
-
-        return False, -1
+    # def has_a_winner(self):
+    #     """判断当前是否有赢家了"""
+    #     width = self.width
+    #     height = self.height
+    #     states = self.states
+    #     n = self.n_in_row
+    #
+    #     moved = list(set(range(width * height)) - set(self.availables))
+    #     if len(moved) < self.n_in_row + 2:
+    #         return False, -1
+    #
+    #     for m in moved:
+    #         h = m // width
+    #         w = m % width
+    #         player = states[m]
+    #
+    #         if (w in range(width - n + 1) and
+    #                 len(set(states.get(i, -1) for i in range(m, m + n))) == 1):  # 如果自[h,w]起，横排n个元素的颜色只有一种
+    #             return True, player  # 则游戏结束，返回赢家
+    #
+    #         if (h in range(height - n + 1) and
+    #                 len(set(states.get(i, -1) for i in range(m, m + n * width, width))) == 1):
+    #             return True, player
+    #
+    #         if (w in range(width - n + 1) and h in range(height - n + 1) and
+    #                 len(set(states.get(i, -1) for i in range(m, m + n * (width + 1), width + 1))) == 1):
+    #             return True, player
+    #
+    #         if (w in range(n - 1, width) and h in range(height - n + 1) and
+    #                 len(set(states.get(i, -1) for i in range(m, m + n * (width - 1), width - 1))) == 1):
+    #             return True, player
+    #
+    #     return False, -1
+    #
+    # def game_end(self):
+    #     """检查游戏有没有结束"""
+    #     win, winner = self.has_a_winner()
+    #     if win:
+    #         return True, winner  # 某个玩家胜利
+    #     elif not len(self.availables):
+    #         return True, -1  # 平局
+    #     return False, -1  # 游戏尚未结束
 
     def game_end(self):
-        """检查游戏有没有结束"""
-        win, winner = self.has_a_winner()
-        if win:
-            return True, winner  # 某个玩家胜利
-        elif not len(self.availables):
+        """
+        使用square，快速判赢，只需要判别最后一次行棋周围的5格，只存在平局和自己赢的情况，不存在自己下完，对手赢棋的情况
+        """
+        h, w = self.move_to_location(self.last_move)
+        player = self.states[self.last_move]
+
+        if len(self.availables) > self.width * self.height - self.n_in_row * 2 + 1:
+            # 最快后手第三手赢棋
+            return False, -1
+
+        for direction in [(1, 0), (0, 1), (1, 1), (-1, 1)]:
+            # 方向为横向、纵向、斜右、斜左
+            win = self.connect_n(h, w, direction, player)
+            if win:
+                # print(self.square)
+                return win, player
+
+        if len(self.availables) == 0:
             return True, -1  # 平局
+
         return False, -1  # 游戏尚未结束
+
+    def connect_n(self, h, w, direction, player):
+        n = self.n_in_row
+        connect_num = 0
+        for i in range(-n + 1, n):
+            # 需要从倒退五格开始，防止漏算最后一手棋在中间形成连珠的情况
+            try:
+                if self.square[h + (i * direction[0]), w + (i * direction[1])] == player:
+                    connect_num = connect_num + 1
+                else:
+                    connect_num = 0
+                if connect_num >= n:
+                    return True
+            except IndexError:
+                continue
+        return False
 
     def get_current_player(self):
         return self.current_player
@@ -151,16 +191,25 @@ class Board(object):
         return len(self.availables) == (self.width * self.height)
 
     def _update_neighbor(self, move):
+        """
+        更新棋盘与棋子相邻的格点
+        """
+        width = self.width
         candidates = [
             move + 1, move - 1,
-            move + self.width - 1, move + self.width, move + self.width + 1,
-            move - self.width - 1, move - self.width, move - self.width + 1
+            move + width - 1, move + width, move + width + 1,
+            move - width - 1, move - width, move - width + 1
         ]
         for candidate in candidates:
-            if (candidate in self.availables) and (candidate >= 0) and (candidate <= self.hw - 1):
-                if abs((candidate // self.width) - (move // self.width)) <= 1:
-                    # 排除非斜对角格点
-                    self.neighbor.add(candidate)
+            if candidate not in self.availables:
+                continue  # 排除已经下过的格点
+            if abs((candidate // width) - (move // width)) > 1:
+                continue  # 排除非斜对角格点
+            if ((move % width) == 0) and ((candidate % width) == width - 1):
+                continue  # 排除超出左界的格点
+            if ((move % width) == width - 1) and ((candidate % width) == 0):
+                continue  # 排除超出右界的格点
+            self.neighbor.add(candidate)
         self.neighbor.discard(move)
 
     def __str__(self):

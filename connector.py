@@ -1,10 +1,13 @@
 from loguru import logger
 
 from roku_game import Board, Game
-from roku_mcts import MCTSEngine
-from roku_RL import RLEngine
+# from roku_mcts import MCTSEngine
+# from roku_RL import RLEngine
+# from roku_MMT import MMTEngine
+from roku_MT import MTEngine
 
-from policy_value_net_pytorch import PolicyValueNet  # Pytorch
+# from policy_value_net_pytorch import PolicyValueNet  # Pytorch
+
 
 CHAR_MAP = {
     'A': '00', 'B': '01', 'C': '02', 'D': '03', 'E': '04',
@@ -143,10 +146,17 @@ if __name__ == '__main__':
 
     logger.remove(handler_id=None)
     log_file = logger.add('test.log', level='INFO')
+    # MCTS Engine
     # engine = MCTSEngine(c_puct=5, n_playout=400, name="Engine2")
-    model_file = './engine.model'
-    best_policy = PolicyValueNet(19, 19, model_file=model_file)
-    engine = RLEngine(best_policy, c_puct=5, n_playout=400, name="Engine3")
+
+    # RL Engine
+    # model_file = './engine.model'
+    # best_policy = PolicyValueNet(19, 19, model_file=model_file)
+    # engine = RLEngine(best_policy, c_puct=5, n_playout=400, name="Engine3")
+
+    # MMT Engine
+    engine = MTEngine(name="Engine4")
+
     local_server = LocalServer(engine)
     # 主程序循环读取指令并处理
     while True:
